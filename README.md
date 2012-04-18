@@ -12,5 +12,5 @@ unity-bitmapfontrenderer is similar to Unity's TextMesh implementation, which di
 
 ### Sample Project
 
-$ open sample/Assets/Resources/Scenes/Sample.unity
+$ open sample/Assets/Sample.unity
 

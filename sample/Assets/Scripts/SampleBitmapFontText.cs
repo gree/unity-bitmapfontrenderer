@@ -21,7 +21,6 @@
  */
 
 using UnityEngine;
-using System.Collections;
 
 public class SampleBitmapFontText : MonoBehaviour
 {

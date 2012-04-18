@@ -44,7 +44,7 @@ task :build do
 end
 
 desc "pack"
-task :pack => [:build] do
+task :pack do
   system "#{UNITY}/MacOS/Unity -projectPath `pwd`/Packager -batchmode -quit -executeMethod Packager.Export"
   FileUtils.mv "Packager/unity-bitmapfontrenderer.unitypackage", "../dist"
 end

@@ -52,7 +52,7 @@ end
 desc "commit"
 task :commit do
   rev = open("|git show HEAD|head -1|awk '{print $2}'").read
-  system "git commit -m \"#{rev}\" Packager ../dist/unity-bitmapfontrenderer.unitypackage"
+  system "git commit -m \"#{rev}\" ../dist/unity-bitmapfontrenderer.unitypackage"
 end
 
 desc "clean"

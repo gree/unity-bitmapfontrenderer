@@ -28,6 +28,7 @@ public class SampleBitmapFontText : MonoBehaviour
 	public int size;
 	public int width;
 	public Color color;
+	public string font;
 	BitmapFont.Renderer mRenderer;
 
 	void Start()
@@ -35,15 +36,15 @@ public class SampleBitmapFontText : MonoBehaviour
 		/*
 		 * Create BitmapFont.Renderer instance.
 		 */
-		mRenderer = new BitmapFont.Renderer("BitmapFont/font", size, width);
+		mRenderer = new BitmapFont.Renderer("BitmapFont/" + font, size, width);
 		mRenderer.SetText(text, color);
 
 		/*
 		 * Set the Mesh to MeshFilter and set the Material to MeshRenderer.
 		 */
-		MeshFilter meshFilter = gameObject.GetComponent<MeshFilter>();
+		MeshFilter meshFilter = gameObject.AddComponent<MeshFilter>();
 		meshFilter.sharedMesh = mRenderer.mesh;
-		MeshRenderer meshRenderer = gameObject.GetComponent<MeshRenderer>();
+		MeshRenderer meshRenderer = gameObject.AddComponent<MeshRenderer>();
 		meshRenderer.sharedMaterial = mRenderer.material;
 	}
 }

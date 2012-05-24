@@ -1,3 +1,4 @@
+#!/usr/local/bin/macruby
 #
 # Copyright (c) 2012 GREE, Inc.
 # 
@@ -20,7 +21,6 @@
 # THE SOFTWARE.
 #
 
-#!/usr/local/bin/macruby
 framework 'Cocoa'
 
 font_path = ARGV[0]
@@ -88,9 +88,8 @@ class Metric
   end
 
   def pack
-    [@u, @v, @bearingX, @bearingY,
-     @width, @height, @advance,
-     @first, @second, @prevNum, @nextNum].pack("v2c2C7")
+    [@advance, @u, @v, @bearingX, @bearingY,
+     @width, @height, @first, @second, @prevNum, @nextNum].pack("ev2c2C6")
   end
 end
 
@@ -110,11 +109,22 @@ metrics = []
     next if string.empty?
     next if !list.empty? and !list[string]
 
-    attrString =
-      NSAttributedString.alloc.initWithString(string, attributes:attr)
+    textStorage = NSTextStorage.alloc.initWithString(string, attributes:attr)
+
+    layoutManager = NSLayoutManager.alloc.init
+    textStorage.addLayoutManager(layoutManager)
+    numberOfGlyphs = layoutManager.numberOfGlyphs
+    glyphs = NSMutableData.dataWithLength(4 * numberOfGlyphs)
+    layoutManager.getGlyphs(glyphs.mutableBytes, range:NSMakeRange(0, numberOfGlyphs))
+    glyph = (glyphs.bytes[3] << 24) | 
+      (glyphs.bytes[2] << 16) |
+      (glyphs.bytes[1] <<  8) |
+      (glyphs.bytes[0] <<  0)
+    advance = font.advancementForGlyph(glyph).width / font_size
+
     img = NSImage.alloc.initWithSize(NSSize.new(w, h))
     img.lockFocus
-    attrString.drawWithRect(
+    textStorage.drawWithRect(
       NSRect.new(NSPoint.new(0, font_size), NSZeroSize), options:0)
     img.unlockFocus
     rep = NSBitmapImageRep.imageRepWithData(img.TIFFRepresentation)
@@ -182,7 +192,7 @@ metrics = []
       bottom - top + 1,
       left,
       font_size - top,
-      font.maximumAdvancement.width / (c < 128 ? 2 : 1))
+      advance)
     metrics_with_second.push metrics.size
     metrics.push metric
   end

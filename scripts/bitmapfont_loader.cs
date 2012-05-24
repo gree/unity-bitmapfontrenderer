@@ -47,13 +47,13 @@ public partial class Metric
 
 	public Metric(BinaryReader br)
 	{
+		advance = br.ReadSingle();
 		u = br.ReadInt16();
 		v = br.ReadInt16();
 		bearingX = br.ReadSByte();
 		bearingY = br.ReadSByte();
 		width = br.ReadByte();
 		height = br.ReadByte();
-		advance = br.ReadByte();
 		first = br.ReadByte();
 		second = br.ReadByte();
 		prevNum = br.ReadByte();

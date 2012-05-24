@@ -38,13 +38,13 @@ public partial class Header
 
 public partial class Metric
 {
+	public float advance;
 	public short u;
 	public short v;
 	public sbyte bearingX;
 	public sbyte bearingY;
 	public byte width;
 	public byte height;
-	public byte advance;
 	public byte first;
 	public byte second;
 	public byte prevNum;
@@ -76,14 +76,15 @@ public class Renderer
 	protected float mSize;
 	protected float mWidth;
 	protected float mHeight;
+	protected float mSpaceAdvance;
 	protected float mLineSpacing;
 	protected float mLetterSpacing;
 	protected float mTabSpacing;
 	protected float mLeftMargin;
 	protected float mRightMargin;
 	protected Align mAlign;
-	protected Metric mAsciiMetric;
-	protected Metric mNonasciiMetric;
+	protected Metric mAsciiEm;
+	protected Metric mNonasciiEm;
 	protected bool mEmpty;
 
 	public Mesh mesh {get {return mMesh;}}
@@ -94,6 +95,7 @@ public class Renderer
 		float width = 0,
 		float height = 0,
 		Align align = Align.LEFT,
+		float spaceAdvance = 0.25f,
 		float lineSpacing = 1.0f,
 		float letterSpacing = 0.0f,
 		float tabSpacing = 4.0f,
@@ -105,8 +107,8 @@ public class Renderer
 		mData = cache.LoadData(mName);
 		mMaterial = cache.LoadTexture(
 			System.IO.Path.GetDirectoryName(mName) + "/" + mData.textureName);
-		mAsciiMetric = SearchMetric("M");
-		mNonasciiMetric = SearchMetric("\u004d");
+		mAsciiEm = SearchMetric("M");
+		mNonasciiEm = SearchMetric("\u004d");
 		mMesh = new Mesh();
 		mProperty = new MaterialPropertyBlock();
 
@@ -114,6 +116,7 @@ public class Renderer
 		mAlign = align;
 		mWidth = width;
 		mHeight = height;
+		mSpaceAdvance = spaceAdvance;
 		mLineSpacing = lineSpacing;
 		mLetterSpacing = letterSpacing;
 		mTabSpacing = tabSpacing;
@@ -219,8 +222,8 @@ public class Renderer
 		float y = -(float)mData.header.fontAscent;
 		float sheetWidth = (float)mData.header.sheetWidth;
 		float sheetHeight = (float)mData.header.sheetHeight;
-		float asciiAdvance = (float)mAsciiMetric.advance;
-		float nonAsciiAdvance = (float)mNonasciiMetric.advance;
+		float asciiAdvance = mAsciiEm.advance * fontSize * mSpaceAdvance;
+		float nonAsciiAdvance = mNonasciiEm.advance * fontSize * mSpaceAdvance;
 		int lastAscii = -1;
 		float left = width;
 		float right = 0;
@@ -269,7 +272,7 @@ public class Renderer
 				continue;
 			}
 
-			float advance = (float)metric.advance + fontSize * mLetterSpacing;
+			float advance = (metric.advance + mLetterSpacing) * fontSize;
 
 			float px = x + advance;
 			if (width != 0 && px >= width - mRightMargin) {

@@ -307,16 +307,12 @@ public class Renderer
 			y0 *= scale;
 			y1 *= scale;
 
-			float dw = 1.0f / (2.0f * (float)metric.width);
-			float dh = 1.0f / (2.0f * (float)metric.height);
-			float u0 = (float)metric.u + dw;
-			float u1 = (float)(metric.u + metric.width) - dw;
-			float v0 = sheetHeight - ((float)metric.v + dh);
-			float v1 = sheetHeight - ((float)(metric.v + metric.height) - dh);
-			u0 /= sheetWidth;
-			u1 /= sheetWidth;
-			v0 /= sheetHeight;
-			v1 /= sheetHeight;
+			float w = 2.0f * sheetWidth;
+			float u0 = (float)(2 * metric.u + 1) / w;
+			float u1 = u0 + (float)(metric.width * 2 - 2) / w;
+			float h = 2.0f * sheetHeight;
+			float v0 = (float)(2 * (sheetHeight - metric.v) + 1) / h;
+			float v1 = (v0 - (float)(metric.height * 2 + 2) / h);
 
 			int vertexOffset = i * 4;
 			vertices[vertexOffset + 0] = new Vector3(x1, y0, 0);

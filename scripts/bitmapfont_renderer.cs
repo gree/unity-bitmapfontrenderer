@@ -340,7 +340,6 @@ public class Renderer
 				// Align.RIGHT
 				offset = mWidth - mRightMargin - tw;
 			}
-			offset *= scale;
 
 			for (int i = 0; i < vertices.Length; ++i)
 				vertices[i].x += offset;

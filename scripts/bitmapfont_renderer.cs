@@ -222,8 +222,10 @@ public class Renderer
 		float y = -(float)mData.header.fontAscent;
 		float sheetWidth = (float)mData.header.sheetWidth;
 		float sheetHeight = (float)mData.header.sheetHeight;
-		float asciiAdvance = mAsciiEm.advance * fontSize * mSpaceAdvance;
-		float nonAsciiAdvance = mNonasciiEm.advance * fontSize * mSpaceAdvance;
+		float asciiAdvance = (mAsciiEm == null ?
+			1 : mAsciiEm.advance) * fontSize * mSpaceAdvance;
+		float nonAsciiAdvance = (mNonasciiEm == null ?
+			1 : mNonasciiEm.advance) * fontSize * mSpaceAdvance;
 		int lastAscii = -1;
 		float left = width;
 		float right = 0;

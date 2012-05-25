@@ -76,15 +76,14 @@ public class Renderer
 	protected float mSize;
 	protected float mWidth;
 	protected float mHeight;
-	protected float mSpaceAdvance;
 	protected float mLineSpacing;
 	protected float mLetterSpacing;
 	protected float mTabSpacing;
 	protected float mLeftMargin;
 	protected float mRightMargin;
+	protected float mAsciiSpaceAdvance;
+	protected float mNonAsciiSpaceAdvance;
 	protected Align mAlign;
-	protected Metric mAsciiEm;
-	protected Metric mNonasciiEm;
 	protected bool mEmpty;
 
 	public Mesh mesh {get {return mMesh;}}
@@ -107,21 +106,25 @@ public class Renderer
 		mData = cache.LoadData(mName);
 		mMaterial = cache.LoadTexture(
 			System.IO.Path.GetDirectoryName(mName) + "/" + mData.textureName);
-		mAsciiEm = SearchMetric("M");
-		mNonasciiEm = SearchMetric("\u004d");
 		mMesh = new Mesh();
 		mProperty = new MaterialPropertyBlock();
+
+		Metric asciiEm = SearchMetric("M");
+		Metric nonasciiEm = SearchMetric("\u004d");
 
 		mSize = size;
 		mAlign = align;
 		mWidth = width;
 		mHeight = height;
-		mSpaceAdvance = spaceAdvance;
-		mLineSpacing = lineSpacing;
-		mLetterSpacing = letterSpacing;
-		mTabSpacing = tabSpacing;
-		mLeftMargin = leftMargin;
-		mRightMargin = rightMargin;
+		mLetterSpacing = letterSpacing * mSize;
+		mAsciiSpaceAdvance = mLetterSpacing + (asciiEm == null ?
+			1 : asciiEm.advance) * spaceAdvance * mSize;
+		mNonAsciiSpaceAdvance = mLetterSpacing + (nonasciiEm == null ?
+			1 : nonasciiEm.advance) * spaceAdvance * mSize;
+		mTabSpacing = mAsciiSpaceAdvance * tabSpacing;
+		mLineSpacing = lineSpacing * mSize;
+		mLeftMargin = leftMargin * mSize;
+		mRightMargin = rightMargin * mSize;
 		mEmpty = true;
 	}
 
@@ -215,19 +218,13 @@ public class Renderer
 		Vector2[] uv = new Vector2[chars * 4];
 		int[] triangles = new int[chars * 6];
 		Color[] vertexColors = new Color[chars * 4];
-		float fontSize = (float)mData.header.fontSize;
-		float scale = mSize / fontSize;
-		float width = mWidth / scale;
+		float scale = mSize / (float)mData.header.fontSize;
 		float x = mLeftMargin;
 		float y = -(float)mData.header.fontAscent;
 		float sheetWidth = (float)mData.header.sheetWidth;
 		float sheetHeight = (float)mData.header.sheetHeight;
-		float asciiAdvance = (mAsciiEm == null ?
-			1 : mAsciiEm.advance) * fontSize * mSpaceAdvance;
-		float nonAsciiAdvance = (mNonasciiEm == null ?
-			1 : mNonasciiEm.advance) * fontSize * mSpaceAdvance;
 		int lastAscii = -1;
-		float left = width;
+		float left = mWidth;
 		float right = 0;
 
 		for (int i = 0; i < text.Length; ++i) {
@@ -236,22 +233,22 @@ public class Renderer
 			if (c.CompareTo("\n") == 0) {
 				// LINEFEED
 				x = mLeftMargin;
-				y -= fontSize * mLineSpacing;
+				y -= mLineSpacing;
 				lastAscii = -1;
 				continue;
 			} else if (c.CompareTo(" ") == 0) {
 				// SPACE
-				x += asciiAdvance + mLetterSpacing;
+				x += mAsciiSpaceAdvance;
 				lastAscii = -1;
 				continue;
 			} else if (c.CompareTo("\t") == 0) {
 				// TAB
-				x += (asciiAdvance + mLetterSpacing) * mTabSpacing;
+				x += mTabSpacing;
 				lastAscii = -1;
 				continue;
 			} else if (c.CompareTo("\u3000") == 0) {
 				// JIS X 0208 SPACE
-				x += nonAsciiAdvance + fontSize * mLetterSpacing;
+				x += mNonAsciiSpaceAdvance;
 				lastAscii = -1;
 				continue;
 			}
@@ -274,15 +271,15 @@ public class Renderer
 				continue;
 			}
 
-			float advance = (metric.advance + mLetterSpacing) * fontSize;
+			float advance = metric.advance * mSize + mLetterSpacing;
 
 			float px = x + advance;
-			if (width != 0 && px >= width - mRightMargin) {
+			if (mWidth != 0 && px > mWidth - mRightMargin) {
 				// Auto linefeed.
 				int index = lastAscii;
 				lastAscii = -1;
 				x = mLeftMargin;
-				y -= fontSize * mLineSpacing;
+				y -= mLineSpacing;
 				if (index != -1 && (
 						(c.CompareTo("A") >= 0 && c.CompareTo("Z") <= 0) ||
 						(c.CompareTo("a") >= 0 && c.CompareTo("z") <= 0))) {
@@ -292,10 +289,10 @@ public class Renderer
 				}
 			}
 
-			float x0 = x + (float)metric.bearingX;
-			float x1 = x0 + (float)metric.width;
-			float y0 = y + (float)metric.bearingY;
-			float y1 = y0 - (float)metric.height;
+			float x0 = x + (float)metric.bearingX * scale;
+			float x1 = x0 + (float)metric.width * scale;
+			float y0 = y + (float)metric.bearingY * scale;
+			float y1 = y0 - (float)metric.height * scale;
 
 			if (left > x0)
 				left = x0;
@@ -303,11 +300,6 @@ public class Renderer
 				right = x1;
 
 			x += advance;
-
-			x0 *= scale;
-			x1 *= scale;
-			y0 *= scale;
-			y1 *= scale;
 
 			float w = 2.0f * sheetWidth;
 			float u0 = (float)(2 * metric.u + 1) / w;

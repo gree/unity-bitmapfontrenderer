@@ -220,7 +220,7 @@ public class Renderer
 		Color[] vertexColors = new Color[chars * 4];
 		float scale = mSize / (float)mData.header.fontSize;
 		float x = mLeftMargin;
-		float y = -(float)mData.header.fontAscent;
+		float y = -(float)mData.header.fontAscent * scale;
 		float sheetWidth = (float)mData.header.sheetWidth;
 		float sheetHeight = (float)mData.header.sheetHeight;
 		int lastAscii = -1;

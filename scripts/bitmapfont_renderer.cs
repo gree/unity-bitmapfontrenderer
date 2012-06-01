@@ -196,20 +196,21 @@ public class Renderer
 		return metrics[offset];
 	}
 
-	public virtual void SetText(string text, Color color)
+	public virtual bool SetText(string text, Color color)
 	{
 		Color[] colors = new Color[text.Length];
 		for (int i = 0; i < text.Length; ++i)
 			colors[i] = color;
-		SetText(text, colors);
+		return SetText(text, colors);
 	}
 
-	public virtual void SetText(string text, Color[] colors)
+	public virtual bool SetText(string text, Color[] colors)
 	{
+		bool result = true;
 		if (text == null || text.Length == 0) {
 			mEmpty = true;
 			mMesh.Clear();
-			return;
+			return result;
 		}
 
 		mEmpty = false;
@@ -268,6 +269,7 @@ public class Renderer
 			Metric metric = SearchMetric(c);
 			if (metric == null) {
 				// not found
+				result = false;
 				continue;
 			}
 
@@ -353,6 +355,7 @@ public class Renderer
 		mMesh.RecalculateNormals();
 		mMesh.RecalculateBounds();
 		mMesh.Optimize();
+		return result;
 	}
 
 	public virtual void Render(Matrix4x4 matrix, Camera camera = null)

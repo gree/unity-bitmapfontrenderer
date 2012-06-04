@@ -68,6 +68,13 @@ public class Renderer
 		CENTER
 	}
 
+	public enum VerticalAlign
+	{
+		TOP,
+		BOTTOM,
+		MIDDLE
+	}
+
 	protected Data mData;
 	protected Mesh mMesh;
 	protected Material mMaterial;
@@ -84,6 +91,7 @@ public class Renderer
 	protected float mAsciiSpaceAdvance;
 	protected float mNonAsciiSpaceAdvance;
 	protected Align mAlign;
+	protected VerticalAlign mVerticalAlign;
 	protected bool mEmpty;
 
 	public Mesh mesh {get {return mMesh;}}
@@ -94,6 +102,7 @@ public class Renderer
 		float width = 0,
 		float height = 0,
 		Align align = Align.LEFT,
+		VerticalAlign verticalAlign = VerticalAlign.TOP,
 		float spaceAdvance = 0.25f,
 		float lineSpacing = 1.0f,
 		float letterSpacing = 0.0f,
@@ -114,6 +123,7 @@ public class Renderer
 
 		mSize = size;
 		mAlign = align;
+		mVerticalAlign = verticalAlign;
 		mWidth = width;
 		mHeight = height;
 		mLetterSpacing = letterSpacing * mSize;
@@ -227,6 +237,8 @@ public class Renderer
 		int lastAscii = -1;
 		float left = mWidth;
 		float right = 0;
+		float top = mHeight;
+		float bottom = 0;
 
 		for (int i = 0; i < text.Length; ++i) {
 			string c = text.Substring(i, 1);
@@ -300,6 +312,10 @@ public class Renderer
 				left = x0;
 			if (right < x1)
 				right = x1;
+			if (top > y0)
+				top = y0;
+			if (bottom < y1)
+				bottom = y1;
 
 			x += advance;
 
@@ -333,7 +349,7 @@ public class Renderer
 				vertexColors[vertexOffset + n] = colors[i];
 		}
 
-		if (mAlign != Align.LEFT) {
+		if (mWidth != 0 && mAlign != Align.LEFT) {
 			float tw = right - left;
 			float offset;
 			if (mAlign == Align.CENTER) {
@@ -345,6 +361,20 @@ public class Renderer
 
 			for (int i = 0; i < vertices.Length; ++i)
 				vertices[i].x += offset;
+		}
+
+		if (mHeight != 0 && mVerticalAlign != VerticalAlign.TOP) {
+			float th = bottom - top;
+			float offset;
+			if (mVerticalAlign == VerticalAlign.MIDDLE) {
+				offset = (mHeight - th) / 2.0f;
+			} else {
+				// VerticalAlign.BOTTOM
+				offset = mHeight - th;
+			}
+
+			for (int i = 0; i < vertices.Length; ++i)
+				vertices[i].y -= offset;
 		}
 
 		mMesh.Clear();

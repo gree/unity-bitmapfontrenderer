@@ -235,6 +235,7 @@ public class Renderer
 		float sheetWidth = (float)mData.header.sheetWidth;
 		float sheetHeight = (float)mData.header.sheetHeight;
 		int lastAscii = -1;
+		int lastIndex = -1;
 		float left = mWidth;
 		float right = 0;
 		float top = mHeight;
@@ -298,8 +299,12 @@ public class Renderer
 						(c.CompareTo("A") >= 0 && c.CompareTo("Z") <= 0) ||
 						(c.CompareTo("a") >= 0 && c.CompareTo("z") <= 0))) {
 					// ASCII
-					i = index - 1;
-					continue;
+					int nextIndex = index - 1;
+					if (lastIndex != nextIndex) {
+						i = nextIndex;
+						lastIndex = i;
+						continue;
+					}
 				}
 			}
 

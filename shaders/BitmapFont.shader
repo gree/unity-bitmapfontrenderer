@@ -22,6 +22,7 @@
 
 Shader "BitmapFont" {
 	Properties {
+		_Color ("Color", Color) = (1, 1, 1, 1)
 		_MainTex ("Font Texture", 2D) = "white" {}
 	}
 
@@ -32,7 +33,7 @@ Shader "BitmapFont" {
 		}
 		Lighting Off
 		Cull Off
-		ZWrite Off
+		ZWrite On
 		Fog {Mode Off}
 		Blend SrcAlpha OneMinusSrcAlpha
 		Pass {
@@ -43,6 +44,10 @@ Shader "BitmapFont" {
 			}
 			SetTexture [_MainTex] {
 				Combine primary, texture * primary
+			}
+			SetTexture [_MainTex] {
+				constantColor [_Color]
+				Combine previous * constant, previous
 			}
 		}
 	}

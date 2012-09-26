@@ -1,23 +1,21 @@
 /*
- * Copyright (c) 2012 GREE, Inc.
+ * Copyright (C) 2012 GREE, Inc.
  * 
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
+ * This software is provided 'as-is', without any express or implied
+ * warranty.  In no event will the authors be held liable for any damages
+ * arising from the use of this software.
  * 
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
+ * Permission is granted to anyone to use this software for any purpose,
+ * including commercial applications, and to alter it and redistribute it
+ * freely, subject to the following restrictions:
  * 
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+ * 1. The origin of this software must not be misrepresented; you must not
+ *    claim that you wrote the original software. If you use this software
+ *    in a product, an acknowledgment in the product documentation would be
+ *    appreciated but is not required.
+ * 2. Altered source versions must be plainly marked as such, and must not be
+ *    misrepresented as being the original software.
+ * 3. This notice may not be removed or altered from any source distribution.
  */
 
 using System;
@@ -80,6 +78,7 @@ public class Renderer
 	protected Material mMaterial;
 	protected MaterialPropertyBlock mProperty;
 	protected string mName;
+	protected string mText;
 	protected float mSize;
 	protected float mWidth;
 	protected float mHeight;
@@ -113,13 +112,15 @@ public class Renderer
 		ResourceCache cache = ResourceCache.SharedInstance();
 		mName = fontName;
 		mData = cache.LoadData(mName);
-		mMaterial = cache.LoadTexture(
-			System.IO.Path.GetDirectoryName(mName) + "/" + mData.textureName);
+		string dir = System.IO.Path.GetDirectoryName(mName);
+		if (dir.Length > 0)
+			dir += "/";
+		mMaterial = cache.LoadTexture(dir + mData.textureName);
 		mMesh = new Mesh();
 		mProperty = new MaterialPropertyBlock();
 
-		Metric asciiEm = SearchMetric("M");
-		Metric nonasciiEm = SearchMetric("\u004d");
+		Metric asciiEm = SearchMetric('M');
+		Metric nonasciiEm = SearchMetric('\u004d');
 
 		mSize = size;
 		mAlign = align;
@@ -138,11 +139,16 @@ public class Renderer
 		mEmpty = true;
 	}
 
-	~Renderer()
+	public void Destruct()
 	{
+		if (mName == null)
+			return;
+
 		ResourceCache cache = ResourceCache.SharedInstance();
 		cache.UnloadTexture(mData.textureName);
 		cache.UnloadData(mName);
+		Mesh.Destroy(mMesh);
+		mName = null;
 	}
 
 	public class compFirst : IComparer<Metric>
@@ -161,12 +167,11 @@ public class Renderer
 		}
 	}
 
-	protected virtual Metric SearchMetric(string c)
+	protected virtual Metric SearchMetric(char c)
 	{
 		Metric[] metrics = mData.metrics;
-		byte[] b = Encoding.Unicode.GetBytes(c);
-		byte first = b[1];
-		byte second = b[0];
+		byte first = (byte)(((ushort)c) >> 8);
+		byte second = (byte)(((ushort)c) & 0xff);
 		short index = mData.indecies[first];
 
 		int offset = index + second;
@@ -214,9 +219,40 @@ public class Renderer
 		return SetText(text, colors);
 	}
 
+	private static bool IsAscii(char c)
+	{
+		return (c >= '!') && (c <= '~');
+	}
+
+	private class LineContext
+	{
+		public int vertexBegin;
+		public int vertexEnd;
+		public float left;
+		public float right;
+
+		public LineContext(int vBegin, int vEnd, float l, float r)
+		{
+			vertexBegin = vBegin;
+			vertexEnd = vEnd;
+			left = l;
+			right = r;
+		}
+	}
+
+	private void FeedLine(List<LineContext> lines,
+		ref int vertexBegin, int vertexEnd, ref float left, ref float right)
+	{
+		lines.Add(new LineContext(vertexBegin, vertexEnd, left, right));
+		vertexBegin = vertexEnd;
+		left = mWidth;
+		right = 0;
+	}
+
 	public virtual bool SetText(string text, Color[] colors)
 	{
 		bool result = true;
+		mText = text;
 		if (text == null || text.Length == 0) {
 			mEmpty = true;
 			mMesh.Clear();
@@ -228,7 +264,7 @@ public class Renderer
 		Vector3[] vertices = new Vector3[chars * 4];
 		Vector2[] uv = new Vector2[chars * 4];
 		int[] triangles = new int[chars * 6];
-		Color[] vertexColors = new Color[chars * 4];
+		Color32[] vertexColors = new Color32[chars * 4];
 		float scale = mSize / (float)mData.header.fontSize;
 		float x = mLeftMargin;
 		float y = -(float)mData.header.fontAscent * scale;
@@ -236,39 +272,40 @@ public class Renderer
 		float sheetHeight = (float)mData.header.sheetHeight;
 		int lastAscii = -1;
 		int lastIndex = -1;
+		int vertexBegin = 0;
 		float left = mWidth;
 		float right = 0;
 		float top = mHeight;
 		float bottom = 0;
+		List<LineContext> lines = new List<LineContext>();
 
 		for (int i = 0; i < text.Length; ++i) {
-			string c = text.Substring(i, 1);
+			char c = text[i];
 
-			if (c.CompareTo("\n") == 0) {
+			if (c == '\n') {
 				// LINEFEED
 				x = mLeftMargin;
 				y -= mLineSpacing;
 				lastAscii = -1;
+				FeedLine(lines, ref vertexBegin, i, ref left, ref right);
 				continue;
-			} else if (c.CompareTo(" ") == 0) {
+			} else if (c == ' ') {
 				// SPACE
 				x += mAsciiSpaceAdvance;
 				lastAscii = -1;
 				continue;
-			} else if (c.CompareTo("\t") == 0) {
+			} else if (c == '\t') {
 				// TAB
 				x += mTabSpacing;
 				lastAscii = -1;
 				continue;
-			} else if (c.CompareTo("\u3000") == 0) {
+			} else if (c == '\u3000') {
 				// JIS X 0208 SPACE
 				x += mNonAsciiSpaceAdvance;
 				lastAscii = -1;
 				continue;
 			}
-
-			if ((c.CompareTo("A") >= 0 && c.CompareTo("Z") <= 0) ||
-					(c.CompareTo("a") >= 0 && c.CompareTo("z") <= 0)) {
+			if (IsAscii(c)) {
 				// ASCII
 				if (lastAscii == -1) {
 					// Save index for Auto linefeed
@@ -295,16 +332,19 @@ public class Renderer
 				lastAscii = -1;
 				x = mLeftMargin;
 				y -= mLineSpacing;
-				if (index != -1 && (
-						(c.CompareTo("A") >= 0 && c.CompareTo("Z") <= 0) ||
-						(c.CompareTo("a") >= 0 && c.CompareTo("z") <= 0))) {
+				if (index != -1 && IsAscii(c)) {
 					// ASCII
 					int nextIndex = index - 1;
 					if (lastIndex != nextIndex) {
 						i = nextIndex;
 						lastIndex = i;
+						right = vertices[(i - 1) * 4].x;
+						FeedLine(lines,
+							ref vertexBegin, i, ref left, ref right);
 						continue;
 					}
+				} else {
+					FeedLine(lines, ref vertexBegin, i, ref left, ref right);
 				}
 			}
 
@@ -353,19 +393,23 @@ public class Renderer
 			for (int n = 0; n < 4; ++n)
 				vertexColors[vertexOffset + n] = colors[i];
 		}
+		FeedLine(lines, ref vertexBegin, text.Length, ref left, ref right);
 
 		if (mWidth != 0 && mAlign != Align.LEFT) {
-			float tw = right - left;
-			float offset;
-			if (mAlign == Align.CENTER) {
-				offset = (mWidth - mLeftMargin - mRightMargin - tw) / 2.0f;
-			} else {
-				// Align.RIGHT
-				offset = mWidth - mRightMargin - tw;
-			}
+			foreach (LineContext line in lines) {
+				float tw = line.right - line.left;
+				float offset;
+				if (mAlign == Align.CENTER) {
+					offset = (mWidth - mRightMargin - tw) / 2.0f;
+				} else {
+					// Align.RIGHT
+					offset = mWidth - mRightMargin - tw;
+				}
 
-			for (int i = 0; i < vertices.Length; ++i)
-				vertices[i].x += offset;
+				for (int i = line.vertexBegin; i < line.vertexEnd; ++i)
+					for (int n = 0; n < 4; ++n)
+						vertices[i * 4 + n].x += offset;
+			}
 		}
 
 		if (mHeight != 0 && mVerticalAlign != VerticalAlign.TOP) {
@@ -386,11 +430,15 @@ public class Renderer
 		mMesh.vertices = vertices;
 		mMesh.uv = uv;
 		mMesh.triangles = triangles;
-		mMesh.colors = vertexColors;
-		mMesh.RecalculateNormals();
+		mMesh.colors32 = vertexColors;
 		mMesh.RecalculateBounds();
-		mMesh.Optimize();
+		//mMesh.Optimize();
 		return result;
+	}
+
+	public virtual string GetText()
+	{
+		return mText;
 	}
 
 	public virtual void Render(Matrix4x4 matrix, Camera camera = null)
@@ -399,6 +447,31 @@ public class Renderer
 			return;
 		Graphics.DrawMesh(mMesh, matrix, mMaterial, 0, camera);
 	}
+
+	public virtual void Render(Matrix4x4 matrix,
+		Color multColor, int layer = 0, Camera camera = null)
+	{
+		if (mEmpty)
+			return;
+		mProperty.Clear();
+		mProperty.AddColor("_Color", multColor);
+		Graphics.DrawMesh(
+			mMesh, matrix, mMaterial, layer, camera, 0, mProperty);
+	}
+
+#if LWF_USE_ADDITIONALCOLOR
+	public virtual void Render(Matrix4x4 matrix,
+		Color multColor, Color addColor, int layer = 0, Camera camera = null)
+	{
+		if (mEmpty)
+			return;
+		mProperty.Clear();
+		mProperty.AddColor("_Color", multColor);
+		mProperty.AddColor("_AdditionalColor", addColor);
+		Graphics.DrawMesh(
+			mMesh, matrix, mMaterial, layer, camera, 0, mProperty);
+	}
+#endif
 }
 
 }	// namespace BitmapFont
